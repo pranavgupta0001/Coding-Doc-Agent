@@ -88,8 +88,8 @@ class DriftMiner:
                         doc_lines.append(lines[i])
                         
                         # Check if it's a single-line docstring
-                        if lines[i].count(quote) >= 2:
-                            # Single-line docstring
+                        if lines[i].count(quote) == 2:
+                            # Single-line docstring (opening and closing on same line)
                             pass
                         else:
                             # Multi-line docstring
@@ -182,7 +182,7 @@ class DriftMiner:
                             # Get file content after the fix (consistent)
                             try:
                                 after_content = repo.get_contents(file.filename, ref=commit.sha).decoded_content.decode('utf-8')
-                            except:
+                            except (GithubException, UnicodeDecodeError, AttributeError):
                                 after_content = None
                             
                             # Get file content before the fix (drifted)
@@ -190,7 +190,7 @@ class DriftMiner:
                             if commit.parents:
                                 try:
                                     before_content = repo.get_contents(file.filename, ref=commit.parents[0].sha).decoded_content.decode('utf-8')
-                                except:
+                                except (GithubException, UnicodeDecodeError, AttributeError):
                                     pass
                             
                             if after_content and before_content:

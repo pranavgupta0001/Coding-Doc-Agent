@@ -89,8 +89,8 @@ class Statistics:
         print(f"\n  Segment {i}:")
         print(f"    File: {segment['filename']}")
         print(f"    Start line: {segment['start_line']}")
-        print(f"    Code preview: {segment['code'].split(chr(10))[0][:60]}...")
-        print(f"    Doc preview: {segment['documentation'].split(chr(10))[0][:60]}...")
+        print(f"    Code preview: {segment['code'].split('\n')[0][:60]}...")
+        print(f"    Doc preview: {segment['documentation'].split('\n')[0][:60]}...")
     
     # We expect at least 3 segments (2 functions + 1 class)
     success = len(segments) >= 3
