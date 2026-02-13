@@ -42,6 +42,7 @@ venv.bak/
 # Output files
 drift_events.json
 drift_analysis.json
+drift_records.jsonl
 *.log
 
 # OS

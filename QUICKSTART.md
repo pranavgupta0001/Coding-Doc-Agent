@@ -50,9 +50,15 @@ cp .env.example .env
 echo "GITHUB_TOKEN=your_token_here" > .env
 ```
 
-## Basic Usage
+# Basic Usage (Updated)
 
-### Example 1: Mine NumPy (Small Sample)
+The miner now produces **per-symbol records** instead of per-file events.
+
+Output format is **JSONL** → one function/class per line.
+
+---
+
+## Example 1: Mine NumPy (Small Sample)
 
 ```bash
 python3 drift_miner.py --repos numpy/numpy --max-commits 50
@@ -62,17 +68,21 @@ Expected output:
 ```
 Mining repository: numpy/numpy
 Checked 10 commits...
-Found drift-fixing commit: a1b2c3d - DOC: Fix formula in mean function
+Found candidate commit: a1b2c3d - DOC: Fix formula in mean function
 Checked 20 commits...
 ...
-Found 3 drift events in 50 commits
-Results saved to drift_events.json
+Produced 18 per-symbol records from 50 commits scanned
+Results saved to drift_records.jsonl
 
 ==================================================
 SUMMARY
 ==================================================
-Total drift events found: 3
-...
+Total records produced: 18
+
+Label breakdown:
+  doc_changed: 5
+  signature_changed: 2
+  code_changed: 7
 ```
 
 ### Example 2: Mine SciPy and NumPy
@@ -80,11 +90,27 @@ Total drift events found: 3
 ```bash
 python3 drift_miner.py \
   --repos scipy/scipy numpy/numpy \
-  --max-commits 100 \
-  --output my_analysis.json
+  --max-commits 200 \
+  --output my_analysis.jsonl
 ```
 
-### Example 3: Using the Python API
+### Example 3: High Precision Mode
+```bash
+python3 drift_miner.py \
+  --repos numpy/numpy \
+  --max-commits 200 \
+  --require-doc-and-code
+```
+
+### Example 4: High Recall Mode
+```bash
+python3 drift_miner.py \
+  --repos numpy/numpy \
+  --max-commits 200 \
+  --no-patch-overlap-filter
+```
+
+### Example 5: Using the Python API
 
 Create a file `my_mining.py`:
 
@@ -115,43 +141,45 @@ python3 my_mining.py
 
 ## Understanding the Output
 
-The tool creates a JSON file with this structure:
+One line = one function/class at one commit.
 
 ```json
-[
-  {
-    "repository": "numpy/numpy",
-    "commit_sha": "abc123def456...",
-    "commit_message": "DOC: Fix incorrect formula in numpy.mean",
-    "commit_date": "2024-01-15T10:30:00",
-    "author": "Jane Developer",
-    "file": "numpy/core/fromnumeric.py",
-    "before_segments": [
-      {
-        "filename": "fromnumeric.py",
-        "start_line": 100,
-        "code": "def mean(a, axis=None):\n    return sum(a) / count(a)",
-        "documentation": "\"\"\"Calculate mean using formula: sum/n\"\"\""
-      }
-    ],
-    "after_segments": [
-      {
-        "filename": "fromnumeric.py",
-        "start_line": 100,
-        "code": "def mean(a, axis=None):\n    return sum(a) / count(a)",
-        "documentation": "\"\"\"Calculate mean using formula: Σx/n where n is count\"\"\""
-      }
-    ]
+{
+  "repository": "numpy/numpy",
+  "commit_sha": "abc123",
+  "file": "numpy/core/fromnumeric.py",
+
+  "symbol": "mean",
+  "symbol_type": "function",
+
+  "before": {
+    "signature": "def mean(a):",
+    "documentation": "\"\"\"Return average.\"\"\"",
+    "code": "..."
+  },
+
+  "after": {
+    "signature": "def mean(a):",
+    "documentation": "\"\"\"Return arithmetic mean.\"\"\"",
+    "code": "..."
+  },
+
+  "labels": {
+    "doc_changed": true,
+    "signature_changed": false,
+    "code_changed": false,
+    "drift_fix_commit": true
   }
-]
+}
 ```
 
 ### Key Fields
 
-- **before_segments**: Documentation BEFORE the fix (Drifted state)
-- **after_segments**: Documentation AFTER the fix (Consistent state)
-- **commit_sha**: Unique identifier to view the commit on GitHub
-- **patch**: The actual diff showing what changed
+- **symbol**: The function or class being analyzed.
+- **before**: Documentation BEFORE the fix (Drifted state).
+- **after**: Documentation AFTER the fix (Consistent state).
+- **commit_sha**: Unique identifier to view the commit on GitHub.
+- **labels**: Automatically derived change indicators.
 
 ## Analyzing Results
 
@@ -161,20 +189,29 @@ The tool creates a JSON file with this structure:
 import json
 
 # Load results
-with open('drift_events.json', 'r') as f:
-    events = json.load(f)
+import json
 
-# Print first event
-print(json.dumps(events[0], indent=2))
+records = []
+with open('drift_records.jsonl') as f:
+    for line in f:
+        records.append(json.loads(line))
 
-# Count by repository
-from collections import Counter
-repos = Counter(e['repository'] for e in events)
-print(repos)
+print(records[0])
 
-# Find events with specific keywords
-formula_fixes = [e for e in events if 'formula' in e['commit_message'].lower()]
-print(f"Found {len(formula_fixes)} formula fixes")
+# Count change types
+sum(r['labels']['doc_changed'] for r in records)
+```
+
+### Find possible drift candidates
+
+#### Example heuristic: doc didn’t change but code did.
+
+```python
+suspects = [
+    r for r in records
+    if not r['labels']['doc_changed'] and r['labels']['code_changed']
+]
+print(len(suspects))
 ```
 
 ### View Commit on GitHub
