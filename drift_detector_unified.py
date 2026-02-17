@@ -1,6 +1,4 @@
 """
-Requirements Drift Detector - Enhanced Version
-ECS 260 Project - Devarchith & Pranav
 
 This module implements the drift detection methodology on both dataset formats:
 1. drift_records.jsonl - Symbol-level format with before/after
