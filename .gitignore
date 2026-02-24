@@ -43,6 +43,7 @@ venv.bak/
 drift_events.json
 drift_analysis.json
 drift_records.jsonl
+synthetic_drift_records.jsonl
 *.log
 
 # OS
