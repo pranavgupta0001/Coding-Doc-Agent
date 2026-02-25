@@ -1,12 +1,18 @@
 # Quick Start Guide
 
-This guide will help you get started with the Documentation Drift Miner quickly.
+This guide will help you get started quickly with the **Doc + Code Extractor** (JSONL) used for building a drift-detection dataset.
+
+Unlike the old drift miner, this script does **not** try to guess drift or filter commits by “docs fix” keywords. It simply extracts **evidence** (docstrings + code + hierarchy/call context) and leaves labeling (drift / no drift) to a downstream LLM pipeline.
+
+---
 
 ## Prerequisites
 
 - Python 3.8 or higher
 - pip (Python package manager)
-- GitHub account (for API token - optional but recommended)
+- GitHub account (for API token — optional but strongly recommended)
+
+---
 
 ## Installation
 
@@ -52,272 +58,122 @@ echo "GITHUB_TOKEN=your_token_here" > .env
 
 # Basic Usage (Updated)
 
-The miner now produces **per-symbol records** instead of per-file events.
+The extractor produces per-symbol records (functions, classes, and class methods).
 
-Output format is **JSONL** → one function/class per line.
+Output format is JSONL → one symbol record per line.
+
+This is designed to support hierarchical drift evaluation:
+
+- function-level evidence
+
+- method-within-class evidence (includes class_doc)
+
+- module-level evidence (includes module_doc)
+
+- lightweight intra-file call context (callees, callers)
 
 ---
 
 ## Example 1: Mine NumPy (Small Sample)
 
 ```bash
-python3 drift_miner.py --repos numpy/numpy --max-commits 50
+python3 doc_code_extractor.py \
+  --repos numpy/numpy \
+  --max-files 25 \
+  --max-symbols 300 \
+  --output doc_code_records.jsonl
 ```
 
 Expected output:
 ```
-Mining repository: numpy/numpy
-Checked 10 commits...
-Found candidate commit: a1b2c3d - DOC: Fix formula in mean function
-Checked 20 commits...
-...
-Produced 18 per-symbol records from 50 commits scanned
-Results saved to drift_records.jsonl
+Mining repo: numpy/numpy
+  Found 25 .py files (capped at 25)
+  Wrote 300 symbol records for numpy/numpy
 
-==================================================
-SUMMARY
-==================================================
-Total records produced: 18
-
-Label breakdown:
-  doc_changed: 5
-  signature_changed: 2
-  code_changed: 7
+Done. Total records written: 300
+Output: doc_code_records.jsonl
 ```
 
 ### Example 2: Mine SciPy and NumPy
 
 ```bash
-python3 drift_miner.py \
+python3 doc_code_extractor.py \
   --repos scipy/scipy numpy/numpy \
-  --max-commits 200 \
-  --output my_analysis.jsonl
+  --max-files 40 \
+  --max-symbols 600 \
+  --output multi_repo_records.jsonl
 ```
 
-### Example 3: High Precision Mode
+### Example 3: Specify a Git Ref (Branch/SHA/Tag)
 ```bash
-python3 drift_miner.py \
+python3 doc_code_extractor.py \
   --repos numpy/numpy \
-  --max-commits 200 \
-  --require-doc-and-code
+  --ref 10e9faf1afbecca9316ce752c8a1dc8807137edb \
+  --max-files 25 \
+  --max-symbols 300 \
+  --output numpy_pinned.jsonl
 ```
 
-### Example 4: High Recall Mode
+### Example 4: With GitHub Token
 ```bash
-python3 drift_miner.py \
-  --repos numpy/numpy \
-  --max-commits 200 \
-  --no-patch-overlap-filter
-```
-
-### Example 5: Using the Python API
-
-Create a file `my_mining.py`:
-
-```python
-from drift_miner import DriftMiner
-
-# Initialize
-miner = DriftMiner()
-
-# Mine repositories
-scipy_events = miner.mine_repository('scipy/scipy', max_commits=20)
-numpy_events = miner.mine_repository('numpy/numpy', max_commits=20)
-
-# Combine results
-miner.drift_events.extend(scipy_events)
-miner.drift_events.extend(numpy_events)
-
-# Save and summarize
-miner.save_results('my_results.json')
-summary = miner.generate_summary()
-print(f"Found {summary['total_drift_events']} drift events")
-```
-
-Run it:
-```bash
-python3 my_mining.py
+python3 doc_code_extractor.py \
+  --repos numpy/numpy scipy/scipy \
+  --token YOUR_GITHUB_TOKEN \
+  --max-files 50 \
+  --max-symbols 800 \
+  --output doc_code_records.jsonl
 ```
 
 ## Understanding the Output
 
-One line = one function/class at one commit.
+One line = one symbol (function/class/method) at one repo ref.
 
 ```json
 {
   "repository": "numpy/numpy",
-  "commit_sha": "abc123",
-  "file": "numpy/core/fromnumeric.py",
+  "ref": "main",
+  "commit_sha": "10e9faf1afbecca9316ce752c8a1dc8807137edb",
+  "file": "tools/check_python_h_first.py",
 
-  "symbol": "mean",
+  "symbol_path": "sort_order",
   "symbol_type": "function",
+  "signature": "def sort_order(path: str) -> tuple[int, str]:",
 
-  "before": {
-    "signature": "def mean(a):",
-    "documentation": "\"\"\"Return average.\"\"\"",
-    "code": "..."
-  },
+  "doc": null,
+  "code": "def sort_order(path: str) -> tuple[int, str]:\n    ...",
 
-  "after": {
-    "signature": "def mean(a):",
-    "documentation": "\"\"\"Return arithmetic mean.\"\"\"",
-    "code": "..."
-  },
-
-  "labels": {
-    "doc_changed": true,
-    "signature_changed": false,
-    "code_changed": false,
-    "drift_fix_commit": true
+  "context": {
+    "module_doc": "Check that Python.h is included before any stdlib headers.\n\nMay be a bit overzealous, but it should get the job done.",
+    "class_doc": null,
+    "parent_class": null,
+    "siblings": ["check_python_h_included_first", "sort_order", "process_files"],
+    "callees": ["os.path.basename", "os.path.splitext"],
+    "callers": []
   }
 }
 ```
 
 ### Key Fields
 
-- **symbol**: The function or class being analyzed.
-- **before**: Documentation BEFORE the fix (Drifted state).
-- **after**: Documentation AFTER the fix (Consistent state).
-- **commit_sha**: Unique identifier to view the commit on GitHub.
-- **labels**: Automatically derived change indicators.
+- symbol_path: Unique “path” to the symbol
+  - Function: "tokenize"
+  - Class: "Client"
+  - Method: "Client.get"
+- symbol_type: "function" | "class" | "method"
+- doc: The extracted docstring (may be null if missing)
+- code: The extracted source segment for the symbol
+- context.module_doc: Module-level docstring (top of file, if present)
+- context.class_doc: Class docstring (for methods)
+- context.callees / callers: Lightweight intra-file call context
+  - callees: what the symbol calls
+  - callers: what calls this symbol (within the same file, best-effort)
 
-## Analyzing Results
+## Why There Aren't any Drift Labels
 
-### View in Python
+This extractor is intentionally label-free.
 
-```python
-import json
+We use it to gather neutral evidence from OSS repositories, then a downstream agentic LLM system classifies each example as:
+- consistent (no drift)
+- inconsistent (drift)
 
-# Load results
-import json
-
-records = []
-with open('drift_records.jsonl') as f:
-    for line in f:
-        records.append(json.loads(line))
-
-print(records[0])
-
-# Count change types
-sum(r['labels']['doc_changed'] for r in records)
-```
-
-### Find possible drift candidates
-
-#### Example heuristic: doc didn’t change but code did.
-
-```python
-suspects = [
-    r for r in records
-    if not r['labels']['doc_changed'] and r['labels']['code_changed']
-]
-print(len(suspects))
-```
-
-### View Commit on GitHub
-
-Each event includes a `commit_sha`. View it on GitHub:
-```
-https://github.com/{repository}/commit/{commit_sha}
-```
-
-Example:
-```
-https://github.com/numpy/numpy/commit/abc123def456
-```
-
-## Tips and Tricks
-
-### 1. Start Small
-
-Begin with a small number of commits to test:
-```bash
-python3 drift_miner.py --repos numpy/numpy --max-commits 10
-```
-
-### 2. Rate Limit Handling
-
-If you hit rate limits:
-```
-Error accessing repository: 403 Forbidden
-Note: This is likely due to API rate limiting. Please provide a GitHub token.
-```
-
-Solution: Add a GitHub token (see Step 3 above)
-
-### 3. Focus on Recent Commits
-
-Recent commits are more likely to have accessible file content:
-```bash
-python3 drift_miner.py --repos numpy/numpy --max-commits 200
-```
-
-### 4. Multiple Repositories
-
-Mine several projects at once:
-```bash
-python3 drift_miner.py \
-  --repos scipy/scipy numpy/numpy pandas-dev/pandas \
-  --max-commits 50 \
-  --output multi_repo_analysis.json
-```
-
-### 5. Check API Rate Limit
-
-Using PyGithub directly:
-```python
-from github import Github
-g = Github("your_token")
-rate = g.get_rate_limit()
-print(f"Remaining: {rate.core.remaining}/{rate.core.limit}")
-```
-
-## Troubleshooting
-
-### Issue: "ModuleNotFoundError: No module named 'github'"
-
-Solution:
-```bash
-pip install -r requirements.txt
-```
-
-### Issue: "403 Forbidden" errors
-
-Solution: Add a GitHub token (see Setup section)
-
-### Issue: No drift events found
-
-This is normal! Not all commits fix documentation drift. Try:
-- Increasing `--max-commits`
-- Using repositories with more documentation commits
-
-### Issue: Output file is very large
-
-Solution: Mine fewer commits or filter results:
-```python
-import json
-with open('drift_events.json', 'r') as f:
-    events = json.load(f)
-
-# Keep only events with substantial changes
-filtered = [e for e in events if len(e['before_segments']) > 0]
-
-with open('filtered_events.json', 'w') as f:
-    json.dump(filtered, f, indent=2)
-```
-
-## Next Steps
-
-1. Run the test suite: `python3 test_drift_miner.py`
-2. Try the example script: `python3 example_usage.py`
-3. Read the methodology: [METHODOLOGY.md](METHODOLOGY.md)
-4. Explore the output JSON files
-5. Build your own analysis scripts!
-
-## Getting Help
-
-- Check the [README.md](README.md) for detailed documentation
-- Review [METHODOLOGY.md](METHODOLOGY.md) for research background
-- Open an issue on GitHub for bugs or feature requests
-
-Happy mining! 🚀
+Optionally, we will supplement with synthetic drift examples by mutating otherwise-consistent extracted records.

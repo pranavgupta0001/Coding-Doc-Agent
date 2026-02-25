@@ -40,11 +40,9 @@ venv.bak/
 .env
 
 # Output files
-drift_events.json
-drift_analysis.json
-drift_records.jsonl
-synthetic_drift_records.jsonl
+*.json*
 *.log
+data/
 
 # OS
 .DS_Store

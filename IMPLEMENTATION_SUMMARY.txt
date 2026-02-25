@@ -1,4 +1,6 @@
 
+(TODO: THIS FILE IS OUTDATED, NEEDS TO BE UPDATED)
+
 ================================================================================
 DOCUMENTATION DRIFT MINING TOOL - IMPLEMENTATION SUMMARY
 ================================================================================
