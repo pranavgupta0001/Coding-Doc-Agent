@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promise vs Evidence Report</title>
+  <style>
+:root {
+  --bg: #0d1117; --card: #161b22; --border: #30363d;
+  --text: #e6edf3; --muted: #8b949e; --subtle: #21262d;
+  --green: #3fb950; --yellow: #d29922; --red: #f85149;
+  --orange: #e3742f; --blue: #58a6ff; --purple: #bc8cff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', sans-serif;
+  background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.6;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ─────────────────────────────────────── */
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 400px; min-width: 400px; background: var(--card);
+  border-right: 1px solid var(--border); padding: 20px;
+  overflow-y: auto; max-height: 100vh; position: sticky; top: 0;
+}
+.main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+/* ── Badges ─────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 12px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.b-consistent  { background: #0d4a1f; color: var(--green);  border: 1px solid #1a6e2e; }
+.b-inconsistent{ background: #4a0d0d; color: var(--red);    border: 1px solid #6e1a1a; }
+.b-over        { background: #4a2400; color: var(--orange); border: 1px solid #6e3800; }
+.b-under       { background: #0d2a4a; color: var(--blue);   border: 1px solid #1a3f6e; }
+.b-mismatch    { background: #4a0d0d; color: var(--red);    border: 1px solid #6e1a1a; }
+.b-unverified  { background: #2a2a2a; color: var(--muted);  border: 1px solid #404040; }
+.b-category    { background: #1a1040; color: var(--purple); border: 1px solid #2e1f6e; font-size: 10px; }
+
+/* ── Summary grid ───────────────────────────────── */
+.sum-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+.sum-card { text-align: center; padding: 10px 4px; border-radius: 8px;
+            background: var(--subtle); border: 1px solid var(--border); }
+.sum-num  { font-size: 26px; font-weight: 700; }
+.sum-lbl  { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.c-over     { color: var(--orange); }
+.c-mismatch { color: var(--red); }
+.c-under    { color: var(--blue); }
+
+/* ── Filter buttons ─────────────────────────────── */
+.filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+.fbtn {
+  background: var(--subtle); border: 1px solid var(--border); color: var(--muted);
+  padding: 3px 10px; border-radius: 12px; cursor: pointer; font-size: 11px;
+  transition: all .15s;
+}
+.fbtn:hover, .fbtn.active { background: var(--border); color: var(--text); }
+
+/* ── Issue cards (sidebar) ──────────────────────── */
+.issue-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 9px; background: var(--bg);
+  border-left-width: 3px;
+}
+.ic-over      { border-left-color: var(--orange); }
+.ic-mismatch  { border-left-color: var(--red); }
+.ic-under     { border-left-color: var(--blue); }
+.ic-unverified{ border-left-color: var(--muted); }
+.ic-consistent{ border-left-color: var(--green); }
+
+.ic-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.ic-left   { display: flex; align-items: center; gap: 6px; }
+
+/* ── Confidence bar ─────────────────────────────── */
+.conf-wrap { display: flex; align-items: center; gap: 4px; }
+.conf-bg   { width: 52px; height: 4px; background: var(--border); border-radius: 3px; }
+.conf-fill { height: 4px; border-radius: 3px; }
+.conf-txt  { font-size: 10px; color: var(--muted); }
+
+/* ── Evidence list ──────────────────────────────── */
+.ev-list { list-style: none; margin-top: 5px; }
+.ev-list li {
+  font-size: 11px; color: var(--muted); padding: 2px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.ev-list li:last-child { border-bottom: none; }
+.ev-file   { color: var(--blue); font-family: monospace; }
+.ev-sym    { color: var(--purple); font-family: monospace; }
+
+/* ── Fix suggestion ─────────────────────────────── */
+.fix-box {
+  background: #051d0f; border: 1px solid #1a5c33; border-radius: 4px;
+  padding: 6px 10px; margin-top: 7px; font-size: 11px; color: var(--green);
+}
+
+/* ── Requirement blocks (main panel) ────────────── */
+.req-block {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; margin-bottom: 10px; background: var(--card);
+  transition: border-color .2s, background .2s;
+}
+.req-block:target { box-shadow: 0 0 0 2px var(--blue); }
+.rq-over      { border-color: var(--orange); background: #1a0d00; }
+.rq-mismatch  { border-color: var(--red);    background: #1a0000; }
+.rq-under     { border-color: var(--blue);   background: #00101a; }
+.rq-unverified{ border-color: var(--muted);  background: #111; }
+
+.req-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 5px; align-items: center; }
+.req-id   { font-size: 11px; font-weight: 700; color: var(--muted); }
+.req-text { color: var(--text); }
+.req-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* ── Code block ─────────────────────────────────── */
+.code-block {
+  background: #010409; border: 1px solid var(--border); border-radius: 5px;
+  padding: 10px 14px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+  margin-top: 8px;
+}
+
+/* ── Sections ───────────────────────────────────── */
+.section { margin-bottom: 30px; }
+.section-title {
+  font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.section-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 14px;
+}
+.warn-card { border-color: var(--yellow); }
+.info-card { border-color: var(--blue); }
+
+/* ── File entry ─────────────────────────────────── */
+.file-entry { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.file-entry:last-child { border-bottom: none; }
+.file-path { font-family: monospace; font-size: 12px; color: var(--blue); }
+
+/* ── Misc ───────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.meta-row { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+h1 { font-size: 20px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <h1>P vs E</h1>
+        <div class="meta-row" style="margin-top:2px">Promise vs Evidence Pipeline</div>
+      </div>
+      <span class="badge b-consistent" style="font-size:13px">✓ CONSISTENT</span>
+    </div>
+
+    <div class="sum-grid">
+      <div class="sum-card">
+        <div class="sum-num c-over">0</div>
+        <div class="sum-lbl">Over-Promise</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-num c-mismatch">0</div>
+        <div class="sum-lbl">Mismatch</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-num c-under">0</div>
+        <div class="sum-lbl">Under-Promise</div>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <button class="fbtn active" data-f="ALL" onclick="filterItems('ALL')">All</button>
+      <button class="fbtn" data-f="OVER_PROMISE" onclick="filterItems('OVER_PROMISE')">Over</button>
+      <button class="fbtn" data-f="DIRECT_MISMATCH" onclick="filterItems('DIRECT_MISMATCH')">Mismatch</button>
+      <button class="fbtn" data-f="UNDER_PROMISE" onclick="filterItems('UNDER_PROMISE')">Under</button>
+      <button class="fbtn" data-f="CONSISTENT" onclick="filterItems('CONSISTENT')">OK</button>
+    </div>
+
+    <div class="meta-row">Generated: 2026-02-26 21:41 UTC</div>
+    <div class="divider"></div>
+
+    <div style="color:var(--muted);text-align:center;padding:20px">No issues reported</div>
+    
+    <div class="section-card info-card" style="margin-top:12px">
+  <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px">Under-Promise Candidates</div>
+  <div style="font-size:11px;color:var(--blue);padding:2px 0">▸ Code implements &#x27;data export&#x27; but it is not mentioned in requirements.</div>
+</div>
+
+  </aside>
+
+  <!-- ═══ MAIN PANEL ══════════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <div class="section">
+      <div class="section-title">Document Requirements — 21 claims</div>
+      <div class="req-block" id="req-R1">
+  <div class="req-meta">
+    <span class="req-id">R1</span>
+    <span class="badge b-category">INTEGRATION</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Task Management API — Product Specification v1.0
+
+This document describes the required capabilities of the Task Management REST API.</div>
+  
+</div>
+<div class="req-block" id="req-R2">
+  <div class="req-meta">
+    <span class="req-id">R2</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Authentication &amp; Authorization</div>
+  
+</div>
+<div class="req-block" id="req-R3">
+  <div class="req-meta">
+    <span class="req-id">R3</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Users must authenticate via JWT tokens.</div>
+  
+</div>
+<div class="req-block" id="req-R4">
+  <div class="req-meta">
+    <span class="req-id">R4</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Tokens expire after 24 hours.</div>
+  
+</div>
+<div class="req-block" id="req-R5">
+  <div class="req-meta">
+    <span class="req-id">R5</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must implement RBAC with three roles: admin, editor, and viewer.</div>
+  
+</div>
+<div class="req-block" id="req-R6">
+  <div class="req-meta">
+    <span class="req-id">R6</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">All API endpoints must require a valid JWT token in the Authorization header.</div>
+  
+</div>
+<div class="req-block" id="req-R7">
+  <div class="req-meta">
+    <span class="req-id">R7</span>
+    <span class="badge b-category">SAFETY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Failed login attempts exceeding 5 tries must lock the account for 15 minutes.</div>
+  
+</div>
+<div class="req-block" id="req-R8">
+  <div class="req-meta">
+    <span class="req-id">R8</span>
+    <span class="badge b-category">DATA</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Data &amp; Persistence</div>
+  
+</div>
+<div class="req-block" id="req-R9">
+  <div class="req-meta">
+    <span class="req-id">R9</span>
+    <span class="badge b-category">DATA</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Task records must be persisted to a relational database (PostgreSQL recommended).</div>
+  
+</div>
+<div class="req-block" id="req-R10">
+  <div class="req-meta">
+    <span class="req-id">R10</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">All personally identifiable information (PII) must be encrypted at rest using AES-256.</div>
+  
+</div>
+<div class="req-block" id="req-R11">
+  <div class="req-meta">
+    <span class="req-id">R11</span>
+    <span class="badge b-category">COMPLIANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must retain audit logs for all write operations for 90 days.</div>
+  
+</div>
+<div class="req-block" id="req-R12">
+  <div class="req-meta">
+    <span class="req-id">R12</span>
+    <span class="badge b-category">PERFORMANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">API response time must not exceed 200ms at the 99th percentile under normal load.</div>
+  <div class="req-hint">✓ Acceptance: Response within 200ms</div>
+</div>
+<div class="req-block" id="req-R13">
+  <div class="req-meta">
+    <span class="req-id">R13</span>
+    <span class="badge b-category">PERFORMANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must support at least 500 concurrent users without degradation.</div>
+  
+</div>
+<div class="req-block" id="req-R14">
+  <div class="req-meta">
+    <span class="req-id">R14</span>
+    <span class="badge b-category">PERFORMANCE</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Integrations &amp; Real-time</div>
+  
+</div>
+<div class="req-block" id="req-R15">
+  <div class="req-meta">
+    <span class="req-id">R15</span>
+    <span class="badge b-category">INTEGRATION</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The API must expose REST endpoints for CRUD operations on tasks and projects.</div>
+  
+</div>
+<div class="req-block" id="req-R16">
+  <div class="req-meta">
+    <span class="req-id">R16</span>
+    <span class="badge b-category">PERFORMANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:med</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Real-time task update notifications must be delivered via WebSocket connections.</div>
+  
+</div>
+<div class="req-block" id="req-R17">
+  <div class="req-meta">
+    <span class="req-id">R17</span>
+    <span class="badge b-category">OTHER</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:low</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must apply rate limiting of 100 requests per minute per user.</div>
+  
+</div>
+<div class="req-block" id="req-R18">
+  <div class="req-meta">
+    <span class="req-id">R18</span>
+    <span class="badge b-category">COMPLIANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must maintain HIPAA-compliant audit logging for all data access events.</div>
+  
+</div>
+<div class="req-block" id="req-R19">
+  <div class="req-meta">
+    <span class="req-id">R19</span>
+    <span class="badge b-category">COMPLIANCE</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">Users must be able to request deletion of their data (GDPR right to erasure).</div>
+  
+</div>
+<div class="req-block" id="req-R20">
+  <div class="req-meta">
+    <span class="req-id">R20</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">All data in transit must be protected by TLS 1.2 or higher (HTTPS only).</div>
+  
+</div>
+<div class="req-block" id="req-R21">
+  <div class="req-meta">
+    <span class="req-id">R21</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">MUST · risk:high</span>
+    <span style="font-size:10px;color:#8b949e">[doc]</span>
+    
+  </div>
+  <div class="req-text">The system must sanitize all user inputs to prevent SQL injection and XSS attacks.</div>
+  
+</div>
+
+    </div>
+
+    <div class="section">
+      <div class="section-title">User Prompt Claims — 3 claims</div>
+      <div class="req-block" id="req-R22">
+  <div class="req-meta">
+    <span class="req-id">R22</span>
+    <span class="badge b-category">INTEGRATION</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:med</span>
+    <span style="font-size:10px;color:#58a6ff">[user]</span>
+    
+  </div>
+  <div class="req-text">Please review the task management API implementation and verify it correctly implements
+the product specification.</div>
+  
+</div>
+<div class="req-block" id="req-R23">
+  <div class="req-meta">
+    <span class="req-id">R23</span>
+    <span class="badge b-category">SECURITY</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:high</span>
+    <span style="font-size:10px;color:#58a6ff">[user]</span>
+    
+  </div>
+  <div class="req-text">The implementation should handle user authentication with JWT, expose REST endpoints
+for task management, and support real-time notifications.</div>
+  
+</div>
+<div class="req-block" id="req-R24">
+  <div class="req-meta">
+    <span class="req-id">R24</span>
+    <span class="badge b-category">COMPLIANCE</span>
+    <span style="font-size:10px;color:var(--muted)">SHOULD · risk:high</span>
+    <span style="font-size:10px;color:#58a6ff">[user]</span>
+    
+  </div>
+  <div class="req-text">Confirm that rate limiting,
+encryption, and HIPAA-compliant audit logging are all present and functional.</div>
+  
+</div>
+
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        Code Evidence Index — 3 files ·
+        7 symbols ·
+        4 routes
+      </div>
+      <div class="section-card">
+        <div class="file-entry">
+  <div class="file-path">__init__.py</div>
+</div>
+<div class="file-entry">
+  <div class="file-path">config.py</div>
+</div>
+<div class="file-entry">
+  <div class="file-path">main.py</div>
+  <div style="font-size:11px;color:var(--muted)">Routes: /tasks, /tasks/&lt;int:task_id&gt;, /tasks/export, /health</div>
+  <div style="font-size:11px;color:var(--purple)">Symbols: list_tasks, create_task, get_task, update_task, delete_task, export_tasks_csv</div>
+</div>
+
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Original Document</div>
+      <div class="section-card">
+        <pre class="code-block" style="border:none;padding:0;background:transparent">Task Management API — Product Specification v1.0
+
+This document describes the required capabilities of the Task Management REST API.
+
+Authentication &amp; Authorization
+1. Users must authenticate via JWT tokens. Tokens expire after 24 hours.
+2. The system must implement RBAC with three roles: admin, editor, and viewer.
+3. All API endpoints must require a valid JWT token in the Authorization header.
+4. Failed login attempts exceeding 5 tries must lock the account for 15 minutes.
+
+Data &amp; Persistence
+5. Task records must be persisted to a relational database (PostgreSQL recommended).
+6. All personally identifiable information (PII) must be encrypted at rest using AES-256.
+7. The system must retain audit logs for all write operations for 90 days.
+
+Performance
+8. API response time must not exceed 200ms at the 99th percentile under normal load.
+9. The system must support at least 500 concurrent users without degradation.
+
+Integrations &amp; Real-time
+10. The API must expose REST endpoints for CRUD operations on tasks and projects.
+11. Real-time task update notifications must be delivered via WebSocket connections.
+12. The system must apply rate limiting of 100 requests per minute per user.
+
+Compliance
+13. The system must maintain HIPAA-compliant audit logging for all data access events.
+14. Users must be able to request deletion of their data (GDPR right to erasure).
+
+Security
+15. All data in transit must be protected by TLS 1.2 or higher (HTTPS only).
+16. The system must sanitize all user inputs to prevent SQL injection and XSS attacks.
+</pre>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">User Prompt</div>
+      <div class="section-card">
+        <pre class="code-block" style="border:none;padding:0;background:transparent">Please review the task management API implementation and verify it correctly implements
+the product specification.
+
+The implementation should handle user authentication with JWT, expose REST endpoints
+for task management, and support real-time notifications. Confirm that rate limiting,
+encryption, and HIPAA-compliant audit logging are all present and functional.
+</pre>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+function filterItems(lbl) {
+  document.querySelectorAll('.issue-card').forEach(c => {
+    c.style.display = (lbl === 'ALL' || c.dataset.label === lbl) ? '' : 'none';
+  });
+  document.querySelectorAll('.fbtn').forEach(b => {
+    b.classList.toggle('active', b.dataset.f === lbl);
+  });
+}
+</script>
+</body>
+</html>

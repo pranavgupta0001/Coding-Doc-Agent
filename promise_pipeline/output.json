@@ -1,0 +1,460 @@
+{
+  "decision": "CONSISTENT",
+  "requirements": [
+    {
+      "id": "R1",
+      "source": "doc",
+      "category": "INTEGRATION",
+      "text": "Task Management API \u2014 Product Specification v1.0\n\nThis document describes the required capabilities of the Task Management REST API.",
+      "keywords": [
+        "task",
+        "management",
+        "api",
+        "product",
+        "specification",
+        "document",
+        "describes",
+        "required",
+        "capabilities",
+        "rest"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R2",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "Authentication & Authorization",
+      "keywords": [
+        "authentication",
+        "authorization"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R3",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "Users must authenticate via JWT tokens.",
+      "keywords": [
+        "users",
+        "authenticate",
+        "jwt",
+        "tokens"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R4",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "Tokens expire after 24 hours.",
+      "keywords": [
+        "tokens",
+        "expire",
+        "after",
+        "hours"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R5",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "The system must implement RBAC with three roles: admin, editor, and viewer.",
+      "keywords": [
+        "implement",
+        "rbac",
+        "three",
+        "roles",
+        "admin",
+        "editor",
+        "viewer"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R6",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "All API endpoints must require a valid JWT token in the Authorization header.",
+      "keywords": [
+        "api",
+        "endpoints",
+        "require",
+        "valid",
+        "jwt",
+        "token",
+        "authorization",
+        "header"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R7",
+      "source": "doc",
+      "category": "SAFETY",
+      "text": "Failed login attempts exceeding 5 tries must lock the account for 15 minutes.",
+      "keywords": [
+        "failed",
+        "login",
+        "attempts",
+        "exceeding",
+        "tries",
+        "lock",
+        "account",
+        "minutes"
+      ],
+      "strictness": "MUST",
+      "measurable": true,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R8",
+      "source": "doc",
+      "category": "DATA",
+      "text": "Data & Persistence",
+      "keywords": [
+        "data",
+        "persistence"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R9",
+      "source": "doc",
+      "category": "DATA",
+      "text": "Task records must be persisted to a relational database (PostgreSQL recommended).",
+      "keywords": [
+        "task",
+        "records",
+        "persisted",
+        "relational",
+        "database",
+        "postgresql",
+        "recommended"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R10",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "All personally identifiable information (PII) must be encrypted at rest using AES-256.",
+      "keywords": [
+        "personally",
+        "identifiable",
+        "information",
+        "pii",
+        "encrypted",
+        "rest",
+        "aes-256"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R11",
+      "source": "doc",
+      "category": "COMPLIANCE",
+      "text": "The system must retain audit logs for all write operations for 90 days.",
+      "keywords": [
+        "retain",
+        "audit",
+        "logs",
+        "write",
+        "operations",
+        "days"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R12",
+      "source": "doc",
+      "category": "PERFORMANCE",
+      "text": "API response time must not exceed 200ms at the 99th percentile under normal load.",
+      "keywords": [
+        "api",
+        "response",
+        "time",
+        "exceed",
+        "percentile",
+        "under",
+        "normal",
+        "load"
+      ],
+      "strictness": "MUST",
+      "measurable": true,
+      "acceptance_criteria": "Response within 200ms",
+      "risk_level": "med"
+    },
+    {
+      "id": "R13",
+      "source": "doc",
+      "category": "PERFORMANCE",
+      "text": "The system must support at least 500 concurrent users without degradation.",
+      "keywords": [
+        "support",
+        "least",
+        "concurrent",
+        "users",
+        "without",
+        "degradation"
+      ],
+      "strictness": "MUST",
+      "measurable": true,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R14",
+      "source": "doc",
+      "category": "PERFORMANCE",
+      "text": "Integrations & Real-time",
+      "keywords": [
+        "integrations",
+        "real-time"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R15",
+      "source": "doc",
+      "category": "INTEGRATION",
+      "text": "The API must expose REST endpoints for CRUD operations on tasks and projects.",
+      "keywords": [
+        "api",
+        "expose",
+        "rest",
+        "endpoints",
+        "crud",
+        "operations",
+        "tasks",
+        "projects"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R16",
+      "source": "doc",
+      "category": "PERFORMANCE",
+      "text": "Real-time task update notifications must be delivered via WebSocket connections.",
+      "keywords": [
+        "real-time",
+        "task",
+        "update",
+        "notifications",
+        "delivered",
+        "websocket",
+        "connections"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R17",
+      "source": "doc",
+      "category": "OTHER",
+      "text": "The system must apply rate limiting of 100 requests per minute per user.",
+      "keywords": [
+        "apply",
+        "rate",
+        "limiting",
+        "requests",
+        "minute"
+      ],
+      "strictness": "MUST",
+      "measurable": true,
+      "acceptance_criteria": null,
+      "risk_level": "low"
+    },
+    {
+      "id": "R18",
+      "source": "doc",
+      "category": "COMPLIANCE",
+      "text": "The system must maintain HIPAA-compliant audit logging for all data access events.",
+      "keywords": [
+        "maintain",
+        "hipaa-compliant",
+        "audit",
+        "logging",
+        "data",
+        "access",
+        "events"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R19",
+      "source": "doc",
+      "category": "COMPLIANCE",
+      "text": "Users must be able to request deletion of their data (GDPR right to erasure).",
+      "keywords": [
+        "users",
+        "able",
+        "request",
+        "deletion",
+        "data",
+        "gdpr",
+        "right",
+        "erasure"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R20",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "All data in transit must be protected by TLS 1.2 or higher (HTTPS only).",
+      "keywords": [
+        "data",
+        "transit",
+        "protected",
+        "tls",
+        "higher",
+        "https",
+        "only"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R21",
+      "source": "doc",
+      "category": "SECURITY",
+      "text": "The system must sanitize all user inputs to prevent SQL injection and XSS attacks.",
+      "keywords": [
+        "sanitize",
+        "inputs",
+        "prevent",
+        "sql",
+        "injection",
+        "xss",
+        "attacks"
+      ],
+      "strictness": "MUST",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R22",
+      "source": "user",
+      "category": "INTEGRATION",
+      "text": "Please review the task management API implementation and verify it correctly implements\nthe product specification.",
+      "keywords": [
+        "please",
+        "review",
+        "task",
+        "management",
+        "api",
+        "implementation",
+        "verify",
+        "correctly",
+        "implements",
+        "product",
+        "specification"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "med"
+    },
+    {
+      "id": "R23",
+      "source": "user",
+      "category": "SECURITY",
+      "text": "The implementation should handle user authentication with JWT, expose REST endpoints\nfor task management, and support real-time notifications.",
+      "keywords": [
+        "implementation",
+        "handle",
+        "authentication",
+        "jwt",
+        "expose",
+        "rest",
+        "endpoints",
+        "task",
+        "management",
+        "support",
+        "real-time",
+        "notifications"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    },
+    {
+      "id": "R24",
+      "source": "user",
+      "category": "COMPLIANCE",
+      "text": "Confirm that rate limiting,\nencryption, and HIPAA-compliant audit logging are all present and functional.",
+      "keywords": [
+        "confirm",
+        "rate",
+        "limiting",
+        "encryption",
+        "hipaa-compliant",
+        "audit",
+        "logging",
+        "present",
+        "functional"
+      ],
+      "strictness": "SHOULD",
+      "measurable": false,
+      "acceptance_criteria": null,
+      "risk_level": "high"
+    }
+  ],
+  "items": [],
+  "issues_found": [],
+  "under_promise_candidates": [
+    "Code implements 'data export' but it is not mentioned in requirements."
+  ]
+}
