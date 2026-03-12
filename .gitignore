@@ -40,9 +40,7 @@ venv.bak/
 .env
 
 # Output files
-*.json*
 *.log
-data/
 
 # OS
 .DS_Store
